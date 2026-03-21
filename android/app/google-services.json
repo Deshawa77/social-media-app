@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "456735030254",
+    "project_id": "deshawa-social-app",
+    "storage_bucket": "deshawa-social-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:456735030254:android:4ab13ef09cd737e2cdacff",
+        "android_client_info": {
+          "package_name": "com.example.social_media_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjWw-QUeFvFoJmtJ4Ex0kEwxv0nbv1kNw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
