@@ -22,7 +22,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
   String formatTimestamp(Timestamp? timestamp) {
     if (timestamp == null) return 'Just now';
     final date = timestamp.toDate();
-    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    return '${date.day}/${date.month}/${date.year} • ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   Future<void> submitComment() async {
@@ -52,9 +52,11 @@ class _CommentsScreenState extends State<CommentsScreen> {
         errorMessage = 'Failed to add comment: $e';
       });
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -99,21 +101,51 @@ class _CommentsScreenState extends State<CommentsScreen> {
                 final comments = snapshot.data!.docs;
 
                 return ListView.builder(
+                  padding: const EdgeInsets.all(12),
                   itemCount: comments.length,
                   itemBuilder: (context, index) {
                     final comment = comments[index];
                     final data = comment.data() as Map<String, dynamic>;
 
-                    return ListTile(
-                      title: Text(data['text'] ?? ''),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('User: ${data['username'] ?? 'Unknown User'}'),
-                          Text(
-                            formatTimestamp(data['createdAt'] as Timestamp?),
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Card(
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(14),
+                          leading: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDBEAFE),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(
+                              Icons.person,
+                              color: Color(0xFF2563EB),
+                            ),
                           ),
-                        ],
+                          title: Text(
+                            data['username'] ?? 'Unknown User',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 6),
+                              Text(data['text'] ?? ''),
+                              const SizedBox(height: 6),
+                              Text(
+                                formatTimestamp(data['createdAt'] as Timestamp?),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     );
                   },
@@ -129,27 +161,36 @@ class _CommentsScreenState extends State<CommentsScreen> {
                 style: const TextStyle(color: Colors.red),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: commentController,
-                    decoration: const InputDecoration(
-                      hintText: 'Write a comment...',
-                      border: OutlineInputBorder(),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: commentController,
+                      decoration: const InputDecoration(
+                        hintText: 'Write a comment...',
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                isLoading
-                    ? const CircularProgressIndicator()
-                    : IconButton(
-                  onPressed: submitComment,
-                  icon: const Icon(Icons.send),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  isLoading
+                      ? const CircularProgressIndicator()
+                      : Container(
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF2563EB),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      onPressed: submitComment,
+                      icon: const Icon(Icons.send),
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

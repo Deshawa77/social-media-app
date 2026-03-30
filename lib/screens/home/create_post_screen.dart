@@ -65,16 +65,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       );
 
       if (!mounted) return;
-
       Navigator.pop(context);
     } catch (e) {
       setState(() {
         errorMessage = 'Failed to create post: $e';
       });
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -91,55 +92,79 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         title: const Text('Create Post'),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: postController,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                labelText: 'What is on your mind?',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (selectedImage != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  selectedImage!,
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
+        padding: const EdgeInsets.all(18),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              children: [
+                TextField(
+                  controller: postController,
+                  maxLines: 6,
+                  decoration: const InputDecoration(
+                    labelText: 'What is on your mind?',
+                    alignLabelWithHint: true,
+                  ),
                 ),
-              ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: pickImage,
-                icon: const Icon(Icons.image),
-                label: const Text('Pick Image'),
-              ),
+                const SizedBox(height: 16),
+                if (selectedImage != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.file(
+                      selectedImage!,
+                      height: 220,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                if (selectedImage != null) const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: pickImage,
+                    icon: const Icon(Icons.image_outlined),
+                    label: Text(
+                      selectedImage == null ? 'Pick Image' : 'Change Image',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (errorMessage != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      errorMessage!,
+                      style: TextStyle(
+                        color: Colors.red.shade700,
+                      ),
+                    ),
+                  ),
+                if (errorMessage != null) const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: isLoading ? null : submitPost,
+                    icon: const Icon(Icons.send),
+                    label: isLoading
+                        ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        color: Colors.white,
+                      ),
+                    )
+                        : const Text('Publish Post'),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            if (errorMessage != null)
-              Text(
-                errorMessage!,
-                style: const TextStyle(color: Colors.red),
-              ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: isLoading ? null : submitPost,
-                child: isLoading
-                    ? const CircularProgressIndicator()
-                    : const Text('Post'),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -1,24 +1,39 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  Future<void> createPost({
-    required String content,
-    String? imageUrl,
-  }) async {
-    final User? user = _auth.currentUser;
+  String? getCurrentUserId() => _auth.currentUser?.uid;
 
+  Future<Map<String, dynamic>> _getCurrentUserProfileData() async {
+    final user = _auth.currentUser;
     if (user == null) {
       throw Exception('No logged-in user found.');
     }
 
-    final userDoc = await _firestore.collection('users').doc(user.uid).get();
-    final userData = userDoc.data();
+    final doc = await _firestore.collection('users').doc(user.uid).get();
+    return doc.data() ?? {};
+  }
 
-    final username = userData?['username'] ?? 'Unknown User';
+  String _buildChatId(String uid1, String uid2) {
+    final ids = [uid1, uid2]..sort();
+    return '${ids[0]}_${ids[1]}';
+  }
+
+  Future<void> createPost({
+    required String content,
+    String? imageUrl,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No logged-in user found.');
+    }
+
+    final profile = await _getCurrentUserProfileData();
+    final username = profile['username'] ?? 'Unknown User';
 
     await _firestore.collection('posts').add({
       'userId': user.uid,
@@ -49,7 +64,6 @@ class FirestoreService {
 
   Stream<DocumentSnapshot> getCurrentUserProfile() {
     final user = _auth.currentUser;
-
     if (user == null) {
       throw Exception('No logged-in user found.');
     }
@@ -59,7 +73,6 @@ class FirestoreService {
 
   Stream<QuerySnapshot> getAllOtherUsers() {
     final user = _auth.currentUser;
-
     if (user == null) {
       throw Exception('No logged-in user found.');
     }
@@ -70,12 +83,79 @@ class FirestoreService {
         .snapshots();
   }
 
+  Future<void> updateProfile({
+    required String username,
+    required String bio,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No logged-in user found.');
+    }
+
+    final userRef = _firestore.collection('users').doc(user.uid);
+    final userPosts = await _firestore
+        .collection('posts')
+        .where('userId', isEqualTo: user.uid)
+        .get();
+
+    final batch = _firestore.batch();
+
+    batch.update(userRef, {
+      'username': username,
+      'bio': bio,
+    });
+
+    for (final post in userPosts.docs) {
+      batch.update(post.reference, {
+        'username': username,
+      });
+    }
+
+    await batch.commit();
+  }
+
+  Future<void> deletePost({
+    required String postId,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No logged-in user found.');
+    }
+
+    final postRef = _firestore.collection('posts').doc(postId);
+    final postDoc = await postRef.get();
+
+    if (!postDoc.exists) return;
+
+    final data = postDoc.data() as Map<String, dynamic>;
+    if (data['userId'] != user.uid) {
+      throw Exception('You can only delete your own posts.');
+    }
+
+    final imageUrl = (data['imageUrl'] ?? '').toString();
+
+    final comments = await postRef.collection('comments').get();
+    final batch = _firestore.batch();
+
+    for (final comment in comments.docs) {
+      batch.delete(comment.reference);
+    }
+
+    batch.delete(postRef);
+    await batch.commit();
+
+    if (imageUrl.isNotEmpty) {
+      try {
+        await FirebaseStorage.instance.refFromURL(imageUrl).delete();
+      } catch (_) {}
+    }
+  }
+
   Future<void> toggleFollow({
     required String targetUserId,
     required List<dynamic> currentFollowing,
   }) async {
     final user = _auth.currentUser;
-
     if (user == null) {
       throw Exception('No logged-in user found.');
     }
@@ -106,8 +186,7 @@ class FirestoreService {
     required String postId,
     required List<dynamic> likes,
   }) async {
-    final User? user = _auth.currentUser;
-
+    final user = _auth.currentUser;
     if (user == null) {
       throw Exception('No logged-in user found.');
     }
@@ -129,15 +208,13 @@ class FirestoreService {
     required String postId,
     required String text,
   }) async {
-    final User? user = _auth.currentUser;
-
+    final user = _auth.currentUser;
     if (user == null) {
       throw Exception('No logged-in user found.');
     }
 
-    final userDoc = await _firestore.collection('users').doc(user.uid).get();
-    final userData = userDoc.data();
-    final username = userData?['username'] ?? 'Unknown User';
+    final profile = await _getCurrentUserProfileData();
+    final username = profile['username'] ?? 'Unknown User';
 
     await _firestore
         .collection('posts')
@@ -162,7 +239,88 @@ class FirestoreService {
         .snapshots();
   }
 
-  String? getCurrentUserId() {
-    return _auth.currentUser?.uid;
+  Future<String> createOrOpenChat({
+    required String targetUserId,
+    required String targetUsername,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No logged-in user found.');
+    }
+
+    final profile = await _getCurrentUserProfileData();
+    final currentUsername = profile['username'] ?? 'Unknown User';
+
+    final chatId = _buildChatId(user.uid, targetUserId);
+    final chatRef = _firestore.collection('chats').doc(chatId);
+
+    await chatRef.set({
+      'participants': [user.uid, targetUserId],
+      'participantNames': {
+        user.uid: currentUsername,
+        targetUserId: targetUsername,
+      },
+      'lastMessage': '',
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    return chatId;
+  }
+
+  Future<void> sendMessage({
+    required String chatId,
+    required String recipientUserId,
+    required String recipientUsername,
+    required String text,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No logged-in user found.');
+    }
+
+    final profile = await _getCurrentUserProfileData();
+    final currentUsername = profile['username'] ?? 'Unknown User';
+
+    final chatRef = _firestore.collection('chats').doc(chatId);
+
+    await chatRef.set({
+      'participants': [user.uid, recipientUserId],
+      'participantNames': {
+        user.uid: currentUsername,
+        recipientUserId: recipientUsername,
+      },
+      'lastMessage': text,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    await chatRef.collection('messages').add({
+      'senderId': user.uid,
+      'senderUsername': currentUsername,
+      'text': text,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Stream<QuerySnapshot> getMessages({
+    required String chatId,
+  }) {
+    return _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .orderBy('createdAt', descending: false)
+        .snapshots();
+  }
+
+  Stream<QuerySnapshot> getUserChats() {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No logged-in user found.');
+    }
+
+    return _firestore
+        .collection('chats')
+        .where('participants', arrayContains: user.uid)
+        .snapshots();
   }
 }
