@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../services/firestore_service.dart';
 import 'messages_screen.dart';
+import 'other_user_profile_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -103,7 +104,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     final users = allUsers.where((doc) {
                       final data = doc.data() as Map<String, dynamic>;
                       final username =
-                      (data['username'] ?? '').toString().toLowerCase();
+                      (data['username'] ?? '')
+                          .toString()
+                          .toLowerCase();
                       return username.contains(query);
                     }).toList();
 
@@ -118,8 +121,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       itemCount: users.length,
                       itemBuilder: (context, index) {
                         final userDoc = users[index];
-                        final data =
-                        userDoc.data() as Map<String, dynamic>;
+                        final data = userDoc.data() as Map<String, dynamic>;
 
                         final String targetUserId = userDoc.id;
                         final String username =
@@ -135,117 +137,139 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 52,
-                                        height: 52,
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFDBEAFE),
-                                          borderRadius:
-                                          BorderRadius.circular(18),
-                                        ),
-                                        child: const Icon(
-                                          Icons.person,
-                                          color: Color(0xFF2563EB),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              username,
-                                              style: const TextStyle(
-                                                fontWeight:
-                                                FontWeight.w800,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              data['bio'] ?? '',
-                                              maxLines: 2,
-                                              overflow:
-                                              TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                color:
-                                                Colors.grey.shade700,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${followers.length} followers • ${targetFollowing.length} following',
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(22),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => OtherUserProfileScreen(
+                                      userId: targetUserId,
+                                      username: username,
+                                    ),
                                   ),
-                                  const SizedBox(height: 14),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: OutlinedButton.icon(
-                                          onPressed: () async {
-                                            final chatId =
-                                            await firestoreService
-                                                .createOrOpenChat(
-                                              targetUserId: targetUserId,
-                                              targetUsername: username,
-                                            );
-
-                                            if (!context.mounted) return;
-
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    MessagesScreen(
-                                                      chatId: chatId,
-                                                      otherUserId:
-                                                      targetUserId,
-                                                      otherUsername:
-                                                      username,
-                                                    ),
-                                              ),
-                                            );
-                                          },
-                                          icon:
-                                          const Icon(Icons.message),
-                                          label: const Text('Message'),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: ElevatedButton(
-                                          onPressed: () async {
-                                            await firestoreService
-                                                .toggleFollow(
-                                              targetUserId: targetUserId,
-                                              currentFollowing: following,
-                                            );
-                                          },
-                                          child: Text(
-                                            isFollowing
-                                                ? 'Unfollow'
-                                                : 'Follow',
+                                );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 52,
+                                          height: 52,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFDBEAFE),
+                                            borderRadius:
+                                            BorderRadius.circular(18),
+                                          ),
+                                          child: const Icon(
+                                            Icons.person,
+                                            color: Color(0xFF2563EB),
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                username,
+                                                style: const TextStyle(
+                                                  fontWeight:
+                                                  FontWeight.w800,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                data['bio'] ?? '',
+                                                maxLines: 2,
+                                                overflow:
+                                                TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  color: Colors
+                                                      .grey
+                                                      .shade700,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                '${followers.length} followers • ${targetFollowing.length} following',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 14),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: OutlinedButton.icon(
+                                            onPressed: () async {
+                                              final chatId =
+                                              await firestoreService
+                                                  .createOrOpenChat(
+                                                targetUserId:
+                                                targetUserId,
+                                                targetUsername:
+                                                username,
+                                              );
+
+                                              if (!context.mounted) {
+                                                return;
+                                              }
+
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      MessagesScreen(
+                                                        chatId: chatId,
+                                                        otherUserId:
+                                                        targetUserId,
+                                                        otherUsername:
+                                                        username,
+                                                      ),
+                                                ),
+                                              );
+                                            },
+                                            icon:
+                                            const Icon(Icons.message),
+                                            label:
+                                            const Text('Message'),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed: () async {
+                                              await firestoreService
+                                                  .toggleFollow(
+                                                targetUserId:
+                                                targetUserId,
+                                                currentFollowing:
+                                                following,
+                                              );
+                                            },
+                                            child: Text(
+                                              isFollowing
+                                                  ? 'Unfollow'
+                                                  : 'Follow',
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),

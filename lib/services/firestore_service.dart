@@ -62,6 +62,12 @@ class FirestoreService {
         .snapshots();
   }
 
+  Stream<DocumentSnapshot> getUserProfile({
+    required String userId,
+  }) {
+    return _firestore.collection('users').doc(userId).snapshots();
+  }
+
   Stream<DocumentSnapshot> getCurrentUserProfile() {
     final user = _auth.currentUser;
     if (user == null) {
